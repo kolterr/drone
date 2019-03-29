@@ -1,0 +1,43 @@
+kind: pipeline
+name: demo
+platform:
+  os: linux
+  arch: amd64
+workspace:
+  base: /go
+  path: src/wangy/gin-test
+steps:
+  - name: build
+    image: golang:1.10.3
+    commands:
+      - go version
+      - go build .
+  - name: publish
+    image: plugins/docker:latest
+    settings:
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      repo: kolter/demo
+      tags: 0.0.3
+  - name: deploy
+    image: appleboy/drone-ssh
+    pull: true
+    settings:
+      host: 114.116.69.184
+      user:
+        from_secret: deploy_username
+      port: 22
+      password:
+        from_secret: deploy_password
+      script:
+        - echo "rm image"
+        - docker rmi -f dkolter/demo:0.0.2
+        - docker rm -f demo-gin
+        - echo "login docker"
+        - echo "login success, pulling..."
+        - docker pull kolter/demo:0.0.3
+        - echo "image running"
+        - docker run --name demo-gin -p 8088:8080 -d kolter/demo:0.0.3
+        - echo "run success"
